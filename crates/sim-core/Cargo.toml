@@ -1,0 +1,10 @@
+[package]
+name = "sim-core"
+version = "0.1.0"
+edition.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+num-complex.workspace = true
+rustfft.workspace = true
+log.workspace = true

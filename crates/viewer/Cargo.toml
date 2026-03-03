@@ -1,0 +1,17 @@
+[package]
+name = "viewer"
+version = "0.1.0"
+edition.workspace = true
+
+[features]
+default = ["native"]
+native = ["eframe/default"]
+web = ["eframe/web_screen_reader", "eframe/wgpu"]
+
+[dependencies]
+sim-core = { path = "../sim-core" }
+anyhow.workspace = true
+egui.workspace = true
+eframe.workspace = true
+log.workspace = true
+env_logger.workspace = true
