@@ -1,6 +1,7 @@
 use egui::*;
 use sim_core::potential::Potential;
 use sim_core::two_particle::potential::{Interaction, Potential2D};
+use sim_core::two_particle::wavefunction::ParticleSymmetry;
 use sim_core::two_particle::TwoParticleSimulation;
 use sim_core::Simulation;
 
@@ -19,6 +20,10 @@ pub enum Scenario {
     TwoParticleFree,
     TwoParticleScattering,
     TwoParticleTrapped,
+    // Identical particles (Chapter 3)
+    BosonBunching,
+    FermionAntibunching,
+    PauliExclusion,
 }
 
 impl Scenario {
@@ -36,6 +41,12 @@ impl Scenario {
         Scenario::TwoParticleTrapped,
     ];
 
+    const IDENTICAL: &[Scenario] = &[
+        Scenario::BosonBunching,
+        Scenario::FermionAntibunching,
+        Scenario::PauliExclusion,
+    ];
+
     fn label(&self) -> &'static str {
         match self {
             Scenario::FreeParticle => "Free Particle",
@@ -46,6 +57,9 @@ impl Scenario {
             Scenario::TwoParticleFree => "Free (no interaction)",
             Scenario::TwoParticleScattering => "Scattering",
             Scenario::TwoParticleTrapped => "Trapped + interaction",
+            Scenario::BosonBunching => "Boson bunching",
+            Scenario::FermionAntibunching => "Fermion antibunching",
+            Scenario::PauliExclusion => "Pauli exclusion",
         }
     }
 
@@ -59,13 +73,21 @@ impl Scenario {
             Scenario::TwoParticleFree => "Two particles with opposite momenta, no interaction. Stays a product state — no entanglement.",
             Scenario::TwoParticleScattering => "Approaching particles repel via soft-Coulomb. Watch entanglement develop as they scatter.",
             Scenario::TwoParticleTrapped => "Both particles in a harmonic well with interaction. Bound-state entanglement builds up.",
+            Scenario::BosonBunching => "Two bosons in a harmonic well. Symmetric wavefunction enhances probability on the x₁=x₂ diagonal — bosons cluster.",
+            Scenario::FermionAntibunching => "Two fermions in a harmonic well. Antisymmetric wavefunction has a node on x₁=x₂ — fermions repel without any force.",
+            Scenario::PauliExclusion => "Two fermions initialized in the SAME state. Antisymmetry forces ψ=0 everywhere — the state cannot exist.",
         }
     }
 
     fn is_two_particle(&self) -> bool {
         matches!(
             self,
-            Scenario::TwoParticleFree | Scenario::TwoParticleScattering | Scenario::TwoParticleTrapped
+            Scenario::TwoParticleFree
+                | Scenario::TwoParticleScattering
+                | Scenario::TwoParticleTrapped
+                | Scenario::BosonBunching
+                | Scenario::FermionAntibunching
+                | Scenario::PauliExclusion
         )
     }
 }
@@ -94,6 +116,9 @@ pub struct App {
     // Interaction parameters
     interaction_g: f64,
     interaction_epsilon: f64,
+
+    // Particle symmetry (for identical particle scenarios)
+    symmetry: ParticleSymmetry,
 
     // Display toggles
     show_real: bool,
@@ -133,6 +158,7 @@ impl App {
             k0_2: 0.0,
             interaction_g: 1.0,
             interaction_epsilon: 0.5,
+            symmetry: ParticleSymmetry::Distinguishable,
             show_real: false,
             show_imag: false,
             show_probability: true,
@@ -188,6 +214,14 @@ impl App {
                     epsilon: self.interaction_epsilon,
                 },
             ),
+            Scenario::BosonBunching | Scenario::FermionAntibunching | Scenario::PauliExclusion => (
+                Potential::harmonic(0.0, 0.5),
+                Potential::harmonic(0.0, 0.5),
+                Interaction::SoftCoulomb {
+                    g: self.interaction_g,
+                    epsilon: self.interaction_epsilon,
+                },
+            ),
             _ => (Potential::free(), Potential::free(), Interaction::None),
         };
         let pot = Potential2D::new(v1, v2, interaction);
@@ -197,12 +231,20 @@ impl App {
     fn reset_wavefunction(&mut self) {
         if self.scenario.is_two_particle() {
             let mut sim = self.build_2p_sim(self.scenario);
-            sim.wf.set_product_gaussian(
-                self.x0, self.sigma, self.k0, self.x0_2, self.sigma_2, self.k0_2,
+            sim.wf.set_symmetrized_gaussian(
+                self.x0, self.sigma, self.k0,
+                self.x0_2, self.sigma_2, self.k0_2,
+                self.symmetry,
             );
-            self.mode = SimMode::TwoParticle(sim);
-            self.purity_cache = 1.0;
+            self.purity_cache = if self.symmetry == ParticleSymmetry::Distinguishable {
+                1.0
+            } else if sim.norm() > 1e-10 {
+                sim.purity()
+            } else {
+                0.0
+            };
             self.purity_frame_counter = 0;
+            self.mode = SimMode::TwoParticle(sim);
         } else {
             let mut sim =
                 Self::build_1p_sim(self.scenario, self.grid_points, self.x_range, self.dt);
@@ -247,6 +289,7 @@ impl App {
                 self.k0_2 = -3.0;
                 self.interaction_g = 0.0;
                 self.interaction_epsilon = 0.5;
+                self.symmetry = ParticleSymmetry::Distinguishable;
             }
             Scenario::TwoParticleScattering => {
                 self.x0 = -8.0;
@@ -257,6 +300,7 @@ impl App {
                 self.k0_2 = -3.0;
                 self.interaction_g = 1.0;
                 self.interaction_epsilon = 0.5;
+                self.symmetry = ParticleSymmetry::Distinguishable;
             }
             Scenario::TwoParticleTrapped => {
                 self.x0 = -3.0;
@@ -267,6 +311,40 @@ impl App {
                 self.k0_2 = 0.0;
                 self.interaction_g = 1.0;
                 self.interaction_epsilon = 0.5;
+                self.symmetry = ParticleSymmetry::Distinguishable;
+            }
+            Scenario::BosonBunching => {
+                self.x0 = -3.0;
+                self.sigma = 1.0;
+                self.k0 = 0.0;
+                self.x0_2 = 3.0;
+                self.sigma_2 = 1.0;
+                self.k0_2 = 0.0;
+                self.interaction_g = 0.5;
+                self.interaction_epsilon = 0.5;
+                self.symmetry = ParticleSymmetry::Boson;
+            }
+            Scenario::FermionAntibunching => {
+                self.x0 = -3.0;
+                self.sigma = 1.0;
+                self.k0 = 0.0;
+                self.x0_2 = 3.0;
+                self.sigma_2 = 1.0;
+                self.k0_2 = 0.0;
+                self.interaction_g = 0.5;
+                self.interaction_epsilon = 0.5;
+                self.symmetry = ParticleSymmetry::Fermion;
+            }
+            Scenario::PauliExclusion => {
+                self.x0 = 0.0;
+                self.sigma = 1.5;
+                self.k0 = 0.0;
+                self.x0_2 = 0.0;
+                self.sigma_2 = 1.5;
+                self.k0_2 = 0.0;
+                self.interaction_g = 0.0;
+                self.interaction_epsilon = 0.5;
+                self.symmetry = ParticleSymmetry::Fermion;
             }
         }
     }
@@ -325,6 +403,17 @@ impl App {
         ui.separator();
         ui.heading("Two Particles");
         for &s in Scenario::TWO_PARTICLE {
+            if ui.selectable_label(self.scenario == s, s.label()).clicked() {
+                self.scenario = s;
+                self.defaults_for_scenario();
+                self.reset_wavefunction();
+                self.running = false;
+            }
+        }
+
+        ui.separator();
+        ui.heading("Identical Particles");
+        for &s in Scenario::IDENTICAL {
             if ui.selectable_label(self.scenario == s, s.label()).clicked() {
                 self.scenario = s;
                 self.defaults_for_scenario();
@@ -484,6 +573,14 @@ impl App {
                 ui.label(format!("⟨E⟩ = {:.3}", sim.expected_energy()));
             }
             SimMode::TwoParticle(sim) => {
+                if self.symmetry != ParticleSymmetry::Distinguishable {
+                    let sym_label = match self.symmetry {
+                        ParticleSymmetry::Boson => "Bosons (symmetric)",
+                        ParticleSymmetry::Fermion => "Fermions (antisymmetric)",
+                        _ => "",
+                    };
+                    ui.label(sym_label);
+                }
                 ui.label(format!("t = {:.3}", sim.time));
                 ui.label(format!("‖ψ‖² = {:.6}", sim.norm()));
                 ui.label(format!("⟨x₁⟩ = {:.3}", sim.expected_x1()));

@@ -266,11 +266,6 @@ entanglement is actually computed — see the
 
 ## What Comes Next
 
-After two-particle QM, the next steps toward the project's goal:
-
-- **Identical particles**: Fermions (antisymmetric ψ) and bosons (symmetric ψ). This is
-  where the Pauli exclusion principle comes from, and it's the foundation of all chemistry.
-- **Second quantization**: Rewrite the theory in terms of creation/annihilation operators,
-  which handles particle number changes and leads to quantum field theory.
-- **Coarse-graining**: Train neural networks to approximate the many-body wavefunction
-  or its effective dynamics at lower resolution — the bridge toward emergent behavior.
+Continue to [Chapter 3: Identical Particles](03-identical-particles.md) — where the
+Pauli exclusion principle falls out of a minus sign, and the periodic table becomes
+inevitable.

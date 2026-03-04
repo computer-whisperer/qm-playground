@@ -8,6 +8,8 @@ use num_complex::Complex64;
 use potential::Potential2D;
 use wavefunction::Wavefunction2D;
 
+pub use wavefunction::ParticleSymmetry;
+
 /// Complete two-particle simulation state.
 pub struct TwoParticleSimulation {
     pub wf: Wavefunction2D,

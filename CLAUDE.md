@@ -9,9 +9,11 @@ QM to macro-scale phenomena.
 
 ## Current Stage
 
-**Stage 2: Two-particle quantum mechanics** — ψ(x₁, x₂) on a 2D configuration space grid.
-Split-operator time evolution with row-wise + column-wise 1D FFTs. Entanglement measured via
-reduced density matrix purity (Tr(ρ₁²)). Stage 1 single-particle code remains alongside.
+**Stage 3: Identical particles** — bosonic (symmetric) and fermionic (antisymmetric)
+wavefunctions on the same two-particle 2D grid. Symmetrized/antisymmetrized initialization,
+exchange effects (bunching, antibunching), Pauli exclusion. The split-operator integrator
+is unchanged — exchange symmetry is preserved automatically by symmetric Hamiltonians.
+Stages 1-2 remain alongside.
 
 ## Repository Layout
 
@@ -39,6 +41,7 @@ cargo test -p sim-core       # run physics tests
 - **Time evolution:** Split-operator method via FFT (rustfft crate). 1D for single particle, 2D (row+column FFTs) for two particles.
 - **Two-particle grid:** n=256 per axis (n²=65536 complex amplitudes). Domain [-30, 30] Bohr.
 - **Entanglement:** Purity Tr(ρ₁²) via O(n³) direct reduced density matrix computation. Schmidt number K = 1/Purity.
+- **Identical particles:** `ParticleSymmetry` enum (Distinguishable/Boson/Fermion). Symmetrized init via `set_symmetrized_gaussian()`. Optional `symmetrize()` projection for numerical drift.
 - **WASM pivot:** eframe feature flags (`native` / `web`) allow future browser deployment.
 
 ## Docs

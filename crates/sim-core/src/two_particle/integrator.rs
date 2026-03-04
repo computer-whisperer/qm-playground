@@ -242,6 +242,71 @@ mod tests {
     }
 
     #[test]
+    fn fermion_antisymmetry_preserved_under_evolution() {
+        use crate::two_particle::wavefunction::ParticleSymmetry;
+
+        // Symmetric Hamiltonian (same potential on both particles) should preserve antisymmetry
+        let pot = Potential2D::new(
+            Potential::harmonic(0.0, 0.5),
+            Potential::harmonic(0.0, 0.5),
+            Interaction::SoftCoulomb { g: 0.5, epsilon: 0.5 },
+        );
+        let mut sim = TwoParticleSimulation::new(128, -15.0, 15.0, 0.005, pot);
+        sim.wf.set_symmetrized_gaussian(
+            -3.0, 1.0, 0.0, 3.0, 1.0, 0.0,
+            ParticleSymmetry::Fermion,
+        );
+
+        sim.step_n(500);
+
+        // Check antisymmetry: ψ(x₁,x₂) ≈ -ψ(x₂,x₁)
+        let n = sim.wf.n;
+        let mut max_violation = 0.0_f64;
+        for i1 in 0..n {
+            for i2 in 0..n {
+                let diff = (sim.wf.psi[i1 * n + i2] + sim.wf.psi[i2 * n + i1]).norm();
+                max_violation = max_violation.max(diff);
+            }
+        }
+        assert!(
+            max_violation < 1e-10,
+            "antisymmetry violation after evolution: max = {max_violation}"
+        );
+    }
+
+    #[test]
+    fn boson_symmetry_preserved_under_evolution() {
+        use crate::two_particle::wavefunction::ParticleSymmetry;
+
+        let pot = Potential2D::new(
+            Potential::harmonic(0.0, 0.5),
+            Potential::harmonic(0.0, 0.5),
+            Interaction::SoftCoulomb { g: 0.5, epsilon: 0.5 },
+        );
+        let mut sim = TwoParticleSimulation::new(128, -15.0, 15.0, 0.005, pot);
+        sim.wf.set_symmetrized_gaussian(
+            -3.0, 1.0, 0.0, 3.0, 1.0, 0.0,
+            ParticleSymmetry::Boson,
+        );
+
+        sim.step_n(500);
+
+        // Check symmetry: ψ(x₁,x₂) ≈ ψ(x₂,x₁)
+        let n = sim.wf.n;
+        let mut max_violation = 0.0_f64;
+        for i1 in 0..n {
+            for i2 in 0..n {
+                let diff = (sim.wf.psi[i1 * n + i2] - sim.wf.psi[i2 * n + i1]).norm();
+                max_violation = max_violation.max(diff);
+            }
+        }
+        assert!(
+            max_violation < 1e-10,
+            "symmetry violation after evolution: max = {max_violation}"
+        );
+    }
+
+    #[test]
     fn energy_conservation_with_interaction() {
         let pot = Potential2D::new(
             Potential::harmonic(0.0, 1.0),

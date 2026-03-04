@@ -1,6 +1,17 @@
 use num_complex::Complex64;
 use std::f64::consts::PI;
 
+/// Particle exchange symmetry.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ParticleSymmetry {
+    /// Distinguishable particles (no symmetry constraint).
+    Distinguishable,
+    /// Bosons: ψ(x₂, x₁) = +ψ(x₁, x₂).
+    Boson,
+    /// Fermions: ψ(x₂, x₁) = -ψ(x₁, x₂).
+    Fermion,
+}
+
 /// A 2D wavefunction ψ(x₁, x₂) on a uniform grid.
 ///
 /// Both particles share the same spatial grid (x_min, x_max, n points).
@@ -147,6 +158,99 @@ impl Wavefunction2D {
         }
         sum * self.dx * self.dx
     }
+
+    /// Initialize as a symmetrized or antisymmetrized product of two Gaussians.
+    ///
+    /// ψ(x₁, x₂) = [φ_a(x₁)φ_b(x₂) ± φ_a(x₂)φ_b(x₁)] / √2
+    ///
+    /// For Distinguishable, this is equivalent to `set_product_gaussian`.
+    /// For Fermion with identical parameters (a == b), the result is identically zero.
+    pub fn set_symmetrized_gaussian(
+        &mut self,
+        x0_1: f64,
+        sigma_1: f64,
+        k0_1: f64,
+        x0_2: f64,
+        sigma_2: f64,
+        k0_2: f64,
+        symmetry: ParticleSymmetry,
+    ) {
+        match symmetry {
+            ParticleSymmetry::Distinguishable => {
+                self.set_product_gaussian(x0_1, sigma_1, k0_1, x0_2, sigma_2, k0_2);
+            }
+            ParticleSymmetry::Boson | ParticleSymmetry::Fermion => {
+                let sign = match symmetry {
+                    ParticleSymmetry::Boson => 1.0,
+                    ParticleSymmetry::Fermion => -1.0,
+                    _ => unreachable!(),
+                };
+
+                let norm_a = (2.0 * PI * sigma_1 * sigma_1).powf(-0.25);
+                let norm_b = (2.0 * PI * sigma_2 * sigma_2).powf(-0.25);
+
+                for i1 in 0..self.n {
+                    let x1 = self.x(i1);
+                    let phi_a1 = norm_a
+                        * (-(x1 - x0_1).powi(2) / (4.0 * sigma_1 * sigma_1)).exp()
+                        * Complex64::new(0.0, k0_1 * x1).exp();
+                    let phi_b1 = norm_b
+                        * (-(x1 - x0_2).powi(2) / (4.0 * sigma_2 * sigma_2)).exp()
+                        * Complex64::new(0.0, k0_2 * x1).exp();
+
+                    for i2 in 0..self.n {
+                        let x2 = self.x(i2);
+                        let phi_a2 = norm_a
+                            * (-(x2 - x0_1).powi(2) / (4.0 * sigma_1 * sigma_1)).exp()
+                            * Complex64::new(0.0, k0_1 * x2).exp();
+                        let phi_b2 = norm_b
+                            * (-(x2 - x0_2).powi(2) / (4.0 * sigma_2 * sigma_2)).exp()
+                            * Complex64::new(0.0, k0_2 * x2).exp();
+
+                        // φ_a(x₁)φ_b(x₂) ± φ_a(x₂)φ_b(x₁)
+                        self.psi[i1 * self.n + i2] =
+                            phi_a1 * phi_b2 + sign * phi_a2 * phi_b1;
+                    }
+                }
+
+                self.normalize();
+            }
+        }
+    }
+
+    /// Project ψ onto the symmetric or antisymmetric subspace.
+    ///
+    /// ψ_sym(x₁, x₂) = [ψ(x₁, x₂) ± ψ(x₂, x₁)] / 2, then renormalize.
+    ///
+    /// Use this periodically to combat numerical drift that breaks exact symmetry.
+    pub fn symmetrize(&mut self, symmetry: ParticleSymmetry) {
+        if symmetry == ParticleSymmetry::Distinguishable {
+            return;
+        }
+
+        let sign = match symmetry {
+            ParticleSymmetry::Boson => 1.0,
+            ParticleSymmetry::Fermion => -1.0,
+            _ => return,
+        };
+
+        let n = self.n;
+        for i1 in 0..n {
+            for i2 in (i1 + 1)..n {
+                let a = self.psi[i1 * n + i2];
+                let b = self.psi[i2 * n + i1];
+                let sym = (a + sign * b) * 0.5;
+                self.psi[i1 * n + i2] = sym;
+                self.psi[i2 * n + i1] = sign * sym;
+            }
+            // Diagonal: for fermions, ψ(x, x) must be zero
+            if symmetry == ParticleSymmetry::Fermion {
+                self.psi[i1 * n + i1] = Complex64::new(0.0, 0.0);
+            }
+        }
+
+        self.normalize();
+    }
 }
 
 #[cfg(test)]
@@ -169,6 +273,72 @@ mod tests {
         let ex2 = wf.expected_x2();
         assert!((ex1 - 2.0).abs() < 0.01, "⟨x₁⟩ = {ex1}");
         assert!((ex2 + 3.0).abs() < 0.01, "⟨x₂⟩ = {ex2}");
+    }
+
+    #[test]
+    fn boson_is_symmetric() {
+        let mut wf = Wavefunction2D::new(128, -15.0, 15.0);
+        wf.set_symmetrized_gaussian(
+            -3.0, 1.5, 2.0, 3.0, 1.0, -1.0,
+            ParticleSymmetry::Boson,
+        );
+
+        let norm = wf.norm();
+        assert!((norm - 1.0).abs() < 1e-10, "boson norm = {norm}");
+
+        // Check ψ(x₁, x₂) = ψ(x₂, x₁)
+        let n = wf.n;
+        let mut max_diff = 0.0_f64;
+        for i1 in 0..n {
+            for i2 in 0..n {
+                let diff = (wf.psi[i1 * n + i2] - wf.psi[i2 * n + i1]).norm();
+                max_diff = max_diff.max(diff);
+            }
+        }
+        assert!(max_diff < 1e-12, "boson symmetry violation: max |diff| = {max_diff}");
+    }
+
+    #[test]
+    fn fermion_is_antisymmetric() {
+        let mut wf = Wavefunction2D::new(128, -15.0, 15.0);
+        wf.set_symmetrized_gaussian(
+            -3.0, 1.5, 2.0, 3.0, 1.0, -1.0,
+            ParticleSymmetry::Fermion,
+        );
+
+        let norm = wf.norm();
+        assert!((norm - 1.0).abs() < 1e-10, "fermion norm = {norm}");
+
+        // Check ψ(x₁, x₂) = -ψ(x₂, x₁)
+        let n = wf.n;
+        let mut max_diff = 0.0_f64;
+        for i1 in 0..n {
+            for i2 in 0..n {
+                let diff = (wf.psi[i1 * n + i2] + wf.psi[i2 * n + i1]).norm();
+                max_diff = max_diff.max(diff);
+            }
+        }
+        assert!(max_diff < 1e-12, "fermion antisymmetry violation: max |diff| = {max_diff}");
+
+        // Diagonal must be zero (fermion exclusion)
+        let mut max_diag = 0.0_f64;
+        for i in 0..n {
+            max_diag = max_diag.max(wf.psi[i * n + i].norm());
+        }
+        assert!(max_diag < 1e-12, "fermion diagonal not zero: max = {max_diag}");
+    }
+
+    #[test]
+    fn fermion_same_state_is_zero() {
+        let mut wf = Wavefunction2D::new(128, -15.0, 15.0);
+        wf.set_symmetrized_gaussian(
+            0.0, 1.5, 2.0, 0.0, 1.5, 2.0, // identical parameters
+            ParticleSymmetry::Fermion,
+        );
+
+        // Pauli exclusion: ψ should be identically zero
+        let max_amp: f64 = wf.psi.iter().map(|c| c.norm()).fold(0.0, f64::max);
+        assert!(max_amp < 1e-12, "fermion same-state not zero: max |ψ| = {max_amp}");
     }
 
     #[test]
