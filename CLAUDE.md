@@ -9,9 +9,9 @@ QM to macro-scale phenomena.
 
 ## Current Stage
 
-**Stage 1: Single-particle quantum mechanics** — 1D Schrödinger equation with split-operator
-time evolution. Building intuition for wavefunctions, tunneling, quantization before moving
-to multi-particle systems and eventually QFT.
+**Stage 2: Two-particle quantum mechanics** — ψ(x₁, x₂) on a 2D configuration space grid.
+Split-operator time evolution with row-wise + column-wise 1D FFTs. Entanglement measured via
+reduced density matrix purity (Tr(ρ₁²)). Stage 1 single-particle code remains alongside.
 
 ## Repository Layout
 
@@ -36,7 +36,9 @@ cargo test -p sim-core       # run physics tests
 ## Technical Notes
 
 - **Units:** Atomic units (ℏ = m_e = e = 1). Energy in Hartree, length in Bohr radii, time in ℏ/E_h.
-- **Time evolution:** Split-operator method via FFT (rustfft crate).
+- **Time evolution:** Split-operator method via FFT (rustfft crate). 1D for single particle, 2D (row+column FFTs) for two particles.
+- **Two-particle grid:** n=256 per axis (n²=65536 complex amplitudes). Domain [-30, 30] Bohr.
+- **Entanglement:** Purity Tr(ρ₁²) via O(n³) direct reduced density matrix computation. Schmidt number K = 1/Purity.
 - **WASM pivot:** eframe feature flags (`native` / `web`) allow future browser deployment.
 
 ## Docs

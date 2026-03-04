@@ -1,5 +1,6 @@
 pub mod integrator;
 pub mod potential;
+pub mod two_particle;
 pub mod units;
 pub mod wavefunction;
 

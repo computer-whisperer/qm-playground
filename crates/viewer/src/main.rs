@@ -1,4 +1,5 @@
 mod app;
+mod colormap;
 
 fn main() -> eframe::Result {
     env_logger::init();

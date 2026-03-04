@@ -150,12 +150,5 @@ When running the simulation:
 
 ## What Comes Next
 
-After building intuition with 1D single-particle QM:
-
-- **2D/3D**: Same physics, richer behavior (angular momentum, orbitals)
-- **Two particles**: Wavefunction is ψ(x₁, x₂) — lives in 6D. This is where
-  entanglement appears and the exponential scaling hits
-- **Identical particles**: Fermions (electrons) vs bosons — symmetry constraints
-  that produce all of chemistry
-- **Second quantization**: Rewrite everything in terms of fields, opening the
-  door to QFT
+Continue to [Chapter 2: Two-Particle QM](02-two-particle-qm.md) — where entanglement
+appears and the exponential scaling of quantum mechanics becomes visceral.
