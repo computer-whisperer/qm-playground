@@ -148,6 +148,12 @@ When running the simulation:
    an eigenstate). Displaced from center, it oscillates back and forth — the quantum
    analog of a classical spring.
 
+## How the Code Works
+
+For a walkthrough of how these ideas map to actual Rust code — the data structures,
+the FFT loop, how observables are computed — see the
+[implementation walkthrough](01-implementation-walkthrough.md).
+
 ## What Comes Next
 
 Continue to [Chapter 2: Two-Particle QM](02-two-particle-qm.md) — where entanglement

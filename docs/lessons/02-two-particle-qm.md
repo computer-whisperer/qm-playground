@@ -258,6 +258,12 @@ Entanglement is not just a curiosity. It's the fundamental reason that:
    information (no FTL communication). Understanding why requires careful thinking about
    what the wavefunction means.
 
+## How the Code Works
+
+For a walkthrough of the 2D data structures, the row+column FFT trick, and how
+entanglement is actually computed — see the
+[implementation walkthrough](02-implementation-walkthrough.md).
+
 ## What Comes Next
 
 After two-particle QM, the next steps toward the project's goal:
