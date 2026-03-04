@@ -314,16 +314,12 @@ impl App {
                 })
                 .collect();
 
-            // Fill under potential curve
-            let mut fill_points = vec![pos2(points[0].x, zero_y)];
-            fill_points.extend_from_slice(&points);
-            fill_points.push(pos2(points.last().unwrap().x, zero_y));
-
-            painter.add(Shape::convex_polygon(
-                fill_points,
+            fill_under_curve(
+                &painter,
+                &points,
+                zero_y,
                 Color32::from_rgba_premultiplied(80, 80, 120, 30),
-                Stroke::NONE,
-            ));
+            );
 
             if points.len() >= 2 {
                 painter.add(Shape::line(
@@ -341,16 +337,12 @@ impl App {
                 .map(|(&x, &d)| pos2(x_to_screen(x), y_to_screen(d)))
                 .collect();
 
-            // Fill under curve
-            let mut fill_points = vec![pos2(points[0].x, zero_y)];
-            fill_points.extend_from_slice(&points);
-            fill_points.push(pos2(points.last().unwrap().x, zero_y));
-
-            painter.add(Shape::convex_polygon(
-                fill_points,
+            fill_under_curve(
+                &painter,
+                &points,
+                zero_y,
                 Color32::from_rgba_premultiplied(0, 120, 255, 40),
-                Stroke::NONE,
-            ));
+            );
 
             if points.len() >= 2 {
                 painter.add(Shape::line(
@@ -447,4 +439,42 @@ impl App {
         // Allocate the rect so egui knows it's used
         ui.allocate_rect(rect, Sense::hover());
     }
+}
+
+/// Fill the area between a curve and a horizontal baseline using a triangle mesh.
+/// Each adjacent pair of curve points forms a quad (2 triangles) with the baseline.
+fn fill_under_curve(painter: &Painter, points: &[Pos2], baseline_y: f32, color: Color32) {
+    if points.len() < 2 {
+        return;
+    }
+
+    let mut mesh = epaint::Mesh::default();
+
+    for i in 0..points.len() {
+        // Top vertex (on the curve)
+        mesh.vertices.push(epaint::Vertex {
+            pos: points[i],
+            uv: epaint::WHITE_UV,
+            color,
+        });
+        // Bottom vertex (on the baseline)
+        mesh.vertices.push(epaint::Vertex {
+            pos: pos2(points[i].x, baseline_y),
+            uv: epaint::WHITE_UV,
+            color,
+        });
+    }
+
+    // Each pair of adjacent columns forms 2 triangles
+    for i in 0..(points.len() - 1) {
+        let top_left = (i * 2) as u32;
+        let bot_left = (i * 2 + 1) as u32;
+        let top_right = (i * 2 + 2) as u32;
+        let bot_right = (i * 2 + 3) as u32;
+
+        mesh.indices.extend_from_slice(&[top_left, bot_left, top_right]);
+        mesh.indices.extend_from_slice(&[top_right, bot_left, bot_right]);
+    }
+
+    painter.add(Shape::mesh(mesh));
 }
