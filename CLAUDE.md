@@ -9,11 +9,9 @@ QM to macro-scale phenomena.
 
 ## Current Stage
 
-**Stage 3: Identical particles** — bosonic (symmetric) and fermionic (antisymmetric)
-wavefunctions on the same two-particle 2D grid. Symmetrized/antisymmetrized initialization,
-exchange effects (bunching, antibunching), Pauli exclusion. The split-operator integrator
-is unchanged — exchange symmetry is preserved automatically by symmetric Hamiltonians.
-Stages 1-2 remain alongside.
+**Stage 4: Spin** — single-particle spin-1/2 (2-component spinor) with magnetic field coupling.
+Zeeman splitting (B_z), Larmor precession (B_x), Stern-Gerlach (B_z gradient). Stage 3
+added identical particles (boson/fermion symmetry). Stages 1-2 remain alongside.
 
 ## Repository Layout
 
@@ -42,6 +40,7 @@ cargo test -p sim-core       # run physics tests
 - **Two-particle grid:** n=256 per axis (n²=65536 complex amplitudes). Domain [-30, 30] Bohr.
 - **Entanglement:** Purity Tr(ρ₁²) via O(n³) direct reduced density matrix computation. Schmidt number K = 1/Purity.
 - **Identical particles:** `ParticleSymmetry` enum (Distinguishable/Boson/Fermion). Symmetrized init via `set_symmetrized_gaussian()`. Optional `symmetrize()` projection for numerical drift.
+- **Spinor:** `spinor` module for spin-1/2 particles. `SpinorWavefunction` (2-component), `SpinorIntegrator` (split-operator with Zeeman + precession). `MagneticField` supports uniform B_z, B_x, and position-dependent gradient.
 - **WASM pivot:** eframe feature flags (`native` / `web`) allow future browser deployment.
 
 ## Docs

@@ -3220,6 +3220,7 @@ dependencies = [
  "egui",
  "env_logger",
  "log",
+ "num-complex",
  "sim-core",
 ]
 

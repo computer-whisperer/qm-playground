@@ -1,5 +1,8 @@
 use egui::*;
+use num_complex::Complex64;
 use sim_core::potential::Potential;
+use sim_core::spinor::integrator::MagneticField;
+use sim_core::spinor::SpinorSimulation;
 use sim_core::two_particle::potential::{Interaction, Potential2D};
 use sim_core::two_particle::wavefunction::ParticleSymmetry;
 use sim_core::two_particle::TwoParticleSimulation;
@@ -24,6 +27,10 @@ pub enum Scenario {
     BosonBunching,
     FermionAntibunching,
     PauliExclusion,
+    // Spin (Chapter 4)
+    ZeemanSplitting,
+    LarmorPrecession,
+    SternGerlach,
 }
 
 impl Scenario {
@@ -47,6 +54,12 @@ impl Scenario {
         Scenario::PauliExclusion,
     ];
 
+    const SPIN: &[Scenario] = &[
+        Scenario::ZeemanSplitting,
+        Scenario::LarmorPrecession,
+        Scenario::SternGerlach,
+    ];
+
     fn label(&self) -> &'static str {
         match self {
             Scenario::FreeParticle => "Free Particle",
@@ -60,6 +73,9 @@ impl Scenario {
             Scenario::BosonBunching => "Boson bunching",
             Scenario::FermionAntibunching => "Fermion antibunching",
             Scenario::PauliExclusion => "Pauli exclusion",
+            Scenario::ZeemanSplitting => "Zeeman splitting",
+            Scenario::LarmorPrecession => "Larmor precession",
+            Scenario::SternGerlach => "Stern-Gerlach",
         }
     }
 
@@ -76,6 +92,9 @@ impl Scenario {
             Scenario::BosonBunching => "Two bosons in a harmonic well. Symmetric wavefunction enhances probability on the x₁=x₂ diagonal — bosons cluster.",
             Scenario::FermionAntibunching => "Two fermions in a harmonic well. Antisymmetric wavefunction has a node on x₁=x₂ — fermions repel without any force.",
             Scenario::PauliExclusion => "Two fermions initialized in the SAME state. Antisymmetry forces ψ=0 everywhere — the state cannot exist.",
+            Scenario::ZeemanSplitting => "Spin superposition in a longitudinal B field. The ↑ and ↓ components see different potentials, splitting their energies.",
+            Scenario::LarmorPrecession => "Spin-up in a transverse B field. Watch ⟨σ_z⟩ oscillate as the spin precesses around the field axis.",
+            Scenario::SternGerlach => "Moving packet in a B-field gradient. Spin-up and spin-down deflect opposite ways, splitting into two beams.",
         }
     }
 
@@ -90,11 +109,19 @@ impl Scenario {
                 | Scenario::PauliExclusion
         )
     }
+
+    fn is_spinor(&self) -> bool {
+        matches!(
+            self,
+            Scenario::ZeemanSplitting | Scenario::LarmorPrecession | Scenario::SternGerlach
+        )
+    }
 }
 
 enum SimMode {
     OneParticle(Simulation),
     TwoParticle(TwoParticleSimulation),
+    Spinor(SpinorSimulation),
 }
 
 pub struct App {
@@ -119,6 +146,10 @@ pub struct App {
 
     // Particle symmetry (for identical particle scenarios)
     symmetry: ParticleSymmetry,
+
+    // Magnetic field parameters (spinor scenarios)
+    bz: f64,
+    bx: f64,
 
     // Display toggles
     show_real: bool,
@@ -159,6 +190,8 @@ impl App {
             interaction_g: 1.0,
             interaction_epsilon: 0.5,
             symmetry: ParticleSymmetry::Distinguishable,
+            bz: 0.0,
+            bx: 0.0,
             show_real: false,
             show_imag: false,
             show_probability: true,
@@ -229,7 +262,41 @@ impl App {
     }
 
     fn reset_wavefunction(&mut self) {
-        if self.scenario.is_two_particle() {
+        if self.scenario.is_spinor() {
+            let potential = match self.scenario {
+                Scenario::SternGerlach => Potential::free(),
+                _ => Potential::harmonic(0.0, 1.0),
+            };
+            let gradient = match self.scenario {
+                Scenario::SternGerlach => self.bz, // use bz slider as gradient strength
+                _ => 0.0,
+            };
+            let field = MagneticField {
+                bz: if self.scenario == Scenario::SternGerlach { 0.0 } else { self.bz },
+                bx: self.bx,
+                gradient_bz: gradient,
+            };
+            let mut sim = SpinorSimulation::new(
+                self.grid_points, -self.x_range, self.x_range, self.dt, potential, field,
+            );
+            let (alpha, beta) = match self.scenario {
+                Scenario::ZeemanSplitting => (
+                    Complex64::new(1.0, 0.0),
+                    Complex64::new(1.0, 0.0),
+                ),
+                Scenario::LarmorPrecession => (
+                    Complex64::new(1.0, 0.0),
+                    Complex64::new(0.0, 0.0),
+                ),
+                Scenario::SternGerlach => (
+                    Complex64::new(1.0, 0.0),
+                    Complex64::new(1.0, 0.0),
+                ),
+                _ => (Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)),
+            };
+            sim.wf.set_gaussian(self.x0, self.sigma, self.k0, alpha, beta);
+            self.mode = SimMode::Spinor(sim);
+        } else if self.scenario.is_two_particle() {
             let mut sim = self.build_2p_sim(self.scenario);
             sim.wf.set_symmetrized_gaussian(
                 self.x0, self.sigma, self.k0,
@@ -346,6 +413,27 @@ impl App {
                 self.interaction_epsilon = 0.5;
                 self.symmetry = ParticleSymmetry::Fermion;
             }
+            Scenario::ZeemanSplitting => {
+                self.x0 = 0.0;
+                self.sigma = 1.0;
+                self.k0 = 0.0;
+                self.bz = 2.0;
+                self.bx = 0.0;
+            }
+            Scenario::LarmorPrecession => {
+                self.x0 = 0.0;
+                self.sigma = 1.0;
+                self.k0 = 0.0;
+                self.bz = 0.0;
+                self.bx = 2.0;
+            }
+            Scenario::SternGerlach => {
+                self.x0 = -10.0;
+                self.sigma = 1.5;
+                self.k0 = 3.0;
+                self.bz = 0.5;
+                self.bx = 0.0;
+            }
         }
     }
 }
@@ -357,6 +445,7 @@ impl eframe::App for App {
             match &mut self.mode {
                 SimMode::OneParticle(sim) => sim.step_n(self.steps_per_frame),
                 SimMode::TwoParticle(sim) => sim.step_n(self.steps_per_frame),
+                SimMode::Spinor(sim) => sim.step_n(self.steps_per_frame),
             }
             // Update purity cache periodically
             if self.scenario.is_two_particle() {
@@ -381,6 +470,7 @@ impl eframe::App for App {
             match &self.mode {
                 SimMode::OneParticle(_) => self.draw_1p_plot(ui),
                 SimMode::TwoParticle(_) => self.draw_2p_plot(ui, ctx),
+                SimMode::Spinor(_) => self.draw_spinor_plot(ui),
             }
         });
     }
@@ -423,10 +513,23 @@ impl App {
         }
 
         ui.separator();
+        ui.heading("Spin");
+        for &s in Scenario::SPIN {
+            if ui.selectable_label(self.scenario == s, s.label()).clicked() {
+                self.scenario = s;
+                self.defaults_for_scenario();
+                self.reset_wavefunction();
+                self.running = false;
+            }
+        }
+
+        ui.separator();
         ui.label(self.scenario.description());
 
         ui.separator();
-        if self.scenario.is_two_particle() {
+        if self.scenario.is_spinor() {
+            self.draw_spinor_controls(ui);
+        } else if self.scenario.is_two_particle() {
             self.draw_2p_controls(ui);
         } else {
             self.draw_1p_controls(ui);
@@ -436,7 +539,7 @@ impl App {
         ui.heading("Simulation");
         self.draw_sim_controls(ui);
 
-        if !self.scenario.is_two_particle() {
+        if !self.scenario.is_two_particle() && !self.scenario.is_spinor() {
             ui.separator();
             ui.heading("Display");
             ui.checkbox(&mut self.show_probability, "|ψ|² probability density");
@@ -531,6 +634,7 @@ impl App {
                 match &mut self.mode {
                     SimMode::OneParticle(sim) => sim.step_n(self.steps_per_frame),
                     SimMode::TwoParticle(sim) => sim.step_n(self.steps_per_frame),
+                    SimMode::Spinor(sim) => sim.step_n(self.steps_per_frame),
                 }
                 if self.scenario.is_two_particle() {
                     if let SimMode::TwoParticle(sim) = &self.mode {
@@ -558,6 +662,10 @@ impl App {
                         sim.dt = self.dt;
                         sim.rebuild_integrator();
                     }
+                    SimMode::Spinor(sim) => {
+                        sim.dt = self.dt;
+                        sim.rebuild_integrator();
+                    }
                 }
             }
         });
@@ -571,6 +679,16 @@ impl App {
                 ui.label(format!("⟨x⟩ = {:.3}", sim.expected_x()));
                 ui.label(format!("⟨p⟩ = {:.3}", sim.expected_p()));
                 ui.label(format!("⟨E⟩ = {:.3}", sim.expected_energy()));
+            }
+            SimMode::Spinor(sim) => {
+                ui.label(format!("t = {:.3}", sim.time));
+                ui.label(format!("‖ψ‖² = {:.6}", sim.norm()));
+                ui.label(format!("⟨x⟩ = {:.3}", sim.expected_x()));
+                ui.label(format!("⟨p⟩ = {:.3}", sim.expected_p()));
+                ui.label(format!("⟨σ_z⟩ = {:.3}", sim.wf.expected_sz()));
+                ui.label(format!("⟨σ_x⟩ = {:.3}", sim.wf.expected_sx()));
+                ui.label(format!("P(↑) = {:.3}", sim.wf.prob_up()));
+                ui.label(format!("P(↓) = {:.3}", sim.wf.prob_down()));
             }
             SimMode::TwoParticle(sim) => {
                 if self.symmetry != ParticleSymmetry::Distinguishable {
@@ -929,6 +1047,182 @@ impl App {
             points,
             Stroke::new(1.5, Color32::from_rgb(40, 160, 255)),
         ));
+    }
+}
+
+// ---- Spinor Plot ----
+
+impl App {
+    fn draw_spinor_controls(&mut self, ui: &mut Ui) {
+        ui.heading("Initial State");
+        ui.horizontal(|ui| {
+            ui.label("x₀:");
+            ui.add(Slider::new(&mut self.x0, -self.x_range..=self.x_range).step_by(0.1));
+        });
+        ui.horizontal(|ui| {
+            ui.label("σ:");
+            ui.add(Slider::new(&mut self.sigma, 0.1..=5.0).step_by(0.1));
+        });
+        ui.horizontal(|ui| {
+            ui.label("k₀:");
+            ui.add(Slider::new(&mut self.k0, -10.0..=10.0).step_by(0.1));
+        });
+
+        ui.separator();
+        ui.heading("Magnetic Field");
+        ui.horizontal(|ui| {
+            ui.label("B_z:");
+            ui.add(Slider::new(&mut self.bz, -5.0..=5.0).step_by(0.1));
+        });
+        ui.horizontal(|ui| {
+            ui.label("B_x:");
+            ui.add(Slider::new(&mut self.bx, -5.0..=5.0).step_by(0.1));
+        });
+
+        if ui.button("Reset").clicked() {
+            self.reset_wavefunction();
+            self.running = false;
+        }
+    }
+
+    fn draw_spinor_plot(&self, ui: &mut Ui) {
+        let sim = match &self.mode {
+            SimMode::Spinor(s) => s,
+            _ => return,
+        };
+
+        let rect = ui.available_rect_before_wrap();
+        let painter = ui.painter_at(rect);
+        painter.rect_filled(rect, 0.0, Color32::from_rgb(20, 22, 28));
+
+        let xs = sim.wf.xs();
+        let density_up = sim.wf.density_up();
+        let density_down = sim.wf.density_down();
+        let density_total: Vec<f64> = density_up
+            .iter()
+            .zip(density_down.iter())
+            .map(|(u, d)| u + d)
+            .collect();
+
+        let max_density = density_total
+            .iter()
+            .cloned()
+            .fold(0.0_f64, f64::max)
+            .max(0.01);
+        let y_scale = max_density * 1.3;
+
+        let margin = 40.0;
+        let plot_rect = Rect::from_min_max(
+            pos2(rect.min.x + margin, rect.min.y + margin),
+            pos2(rect.max.x - margin, rect.max.y - margin),
+        );
+
+        let x_to_screen = |x: f64| -> f32 {
+            let t = (x - sim.wf.x_min) / (sim.wf.x_max - sim.wf.x_min);
+            plot_rect.min.x + t as f32 * plot_rect.width()
+        };
+        let y_to_screen = |y: f64| -> f32 {
+            let t = y / y_scale;
+            plot_rect.max.y - t as f32 * plot_rect.height() * 0.5 - plot_rect.height() * 0.15
+        };
+
+        let zero_y = y_to_screen(0.0);
+        painter.line_segment(
+            [pos2(plot_rect.min.x, zero_y), pos2(plot_rect.max.x, zero_y)],
+            Stroke::new(1.0, Color32::from_gray(60)),
+        );
+
+        // Total probability density (white, subtle fill)
+        let total_points: Vec<Pos2> = xs
+            .iter()
+            .zip(density_total.iter())
+            .map(|(&x, &d)| pos2(x_to_screen(x), y_to_screen(d)))
+            .collect();
+        fill_under_curve(
+            &painter,
+            &total_points,
+            zero_y,
+            Color32::from_rgba_premultiplied(255, 255, 255, 15),
+        );
+        if total_points.len() >= 2 {
+            painter.add(Shape::line(
+                total_points,
+                Stroke::new(1.0, Color32::from_rgba_premultiplied(255, 255, 255, 80)),
+            ));
+        }
+
+        // Spin-up density (blue)
+        let up_points: Vec<Pos2> = xs
+            .iter()
+            .zip(density_up.iter())
+            .map(|(&x, &d)| pos2(x_to_screen(x), y_to_screen(d)))
+            .collect();
+        fill_under_curve(
+            &painter,
+            &up_points,
+            zero_y,
+            Color32::from_rgba_premultiplied(40, 120, 255, 40),
+        );
+        if up_points.len() >= 2 {
+            painter.add(Shape::line(
+                up_points,
+                Stroke::new(2.0, Color32::from_rgb(40, 160, 255)),
+            ));
+        }
+
+        // Spin-down density (red/orange)
+        let down_points: Vec<Pos2> = xs
+            .iter()
+            .zip(density_down.iter())
+            .map(|(&x, &d)| pos2(x_to_screen(x), y_to_screen(d)))
+            .collect();
+        fill_under_curve(
+            &painter,
+            &down_points,
+            zero_y,
+            Color32::from_rgba_premultiplied(255, 100, 40, 40),
+        );
+        if down_points.len() >= 2 {
+            painter.add(Shape::line(
+                down_points,
+                Stroke::new(2.0, Color32::from_rgb(255, 140, 60)),
+            ));
+        }
+
+        // Axis label
+        painter.text(
+            pos2(plot_rect.center().x, plot_rect.max.y + 20.0),
+            Align2::CENTER_TOP,
+            "x (Bohr radii)",
+            FontId::proportional(14.0),
+            Color32::from_gray(160),
+        );
+
+        // Legend
+        let mut legend_y = plot_rect.min.y + 5.0;
+        let legend_x = plot_rect.max.x - 160.0;
+        let legend_spacing = 18.0;
+
+        let legend_entry = |legend_y: &mut f32, text: &str, color: Color32| {
+            painter.text(
+                pos2(legend_x, *legend_y),
+                Align2::LEFT_TOP,
+                text,
+                FontId::proportional(12.0),
+                color,
+            );
+            *legend_y += legend_spacing;
+        };
+
+        legend_entry(&mut legend_y, "— |ψ_↑|² spin up", Color32::from_rgb(40, 160, 255));
+        legend_entry(&mut legend_y, "— |ψ_↓|² spin down", Color32::from_rgb(255, 140, 60));
+        legend_entry(
+            &mut legend_y,
+            "— total probability",
+            Color32::from_rgba_premultiplied(255, 255, 255, 80),
+        );
+
+        ui.allocate_rect(rect, Sense::hover());
     }
 }
 

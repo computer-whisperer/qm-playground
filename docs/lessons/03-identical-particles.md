@@ -294,7 +294,11 @@ For the project's long-term goal of learned coarse-graining:
 
 ## What Comes Next
 
-With identical particles in hand, the next steps:
+Continue to [Chapter 4: Spin](04-spin.md) — where particles gain an internal
+degree of freedom, magnetic fields split energy levels, and the connection between
+exchange symmetry and the periodic table becomes complete.
+
+With spin and identical particles in hand, the further steps:
 
 - **Second quantization**: Rewrite the theory in terms of creation and
   annihilation operators. This handles antisymmetry automatically and extends
