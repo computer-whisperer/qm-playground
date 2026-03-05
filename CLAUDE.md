@@ -9,9 +9,10 @@ QM to macro-scale phenomena.
 
 ## Current Stage
 
-**Stage 4: Spin** — single-particle spin-1/2 (2-component spinor) with magnetic field coupling.
-Zeeman splitting (B_z), Larmor precession (B_x), Stern-Gerlach (B_z gradient). Stage 3
-added identical particles (boson/fermion symmetry). Stages 1-2 remain alongside.
+**Stage 5: Dirac Equation** — 1D relativistic Dirac equation with tunable speed of light.
+Split-operator with 2×2 unitary rotation at each momentum mode. Zitterbewegung,
+Klein tunneling, non-relativistic limit. Reuses SpinorWavefunction from Stage 4.
+Prior stages (1-4) remain alongside.
 
 ## Repository Layout
 
@@ -41,6 +42,7 @@ cargo test -p sim-core       # run physics tests
 - **Entanglement:** Purity Tr(ρ₁²) via O(n³) direct reduced density matrix computation. Schmidt number K = 1/Purity.
 - **Identical particles:** `ParticleSymmetry` enum (Distinguishable/Boson/Fermion). Symmetrized init via `set_symmetrized_gaussian()`. Optional `symmetrize()` projection for numerical drift.
 - **Spinor:** `spinor` module for spin-1/2 particles. `SpinorWavefunction` (2-component), `SpinorIntegrator` (split-operator with Zeeman + precession). `MagneticField` supports uniform B_z, B_x, and position-dependent gradient.
+- **Dirac:** `dirac` module for 1D Dirac equation. `DiracIntegrator` applies analytical 2×2 rotation exp(-iH_k dt) at each momentum mode. Tunable c (speed of light) and mass. `init_positive_energy_packet()` projects onto positive-energy Dirac spinors to suppress Zitterbewegung.
 - **WASM pivot:** eframe feature flags (`native` / `web`) allow future browser deployment.
 
 ## Docs

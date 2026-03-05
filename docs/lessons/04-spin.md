@@ -285,3 +285,5 @@ With spin in hand, we're ready for the **Dirac equation** — the relativistic
 wave equation that *predicts* spin rather than imposing it. The Dirac equation
 naturally produces 2-component spinors (or rather, 4-component ones that include
 antimatter), and our spinor infrastructure carries over directly.
+
+Continue to [Chapter 5: The Dirac Equation](05-dirac-equation.md).

@@ -1,3 +1,4 @@
+pub mod dirac;
 pub mod integrator;
 pub mod potential;
 pub mod spinor;
