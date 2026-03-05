@@ -66,153 +66,213 @@ of one. The computational cost doubles, but the grid structure is unchanged.
 
 ## The Pauli Matrices
 
-Spin operators are represented by the **Pauli matrices** — three 2×2 matrices
-that form a basis for spin measurements:
+Spin operators are represented by the **Pauli matrices** — three 2×2 matrices,
+one for each spatial axis. They act on the spinor (α, β) by matrix
+multiplication:
 
 ```
 σ_x = (0 1)    σ_y = (0 -i)    σ_z = (1  0)
       (1 0)          (i  0)          (0 -1)
 ```
 
-The spin operator along axis a is S_a = σ_a/2 (in units of ℏ = 1).
+Each matrix corresponds to measuring spin along one axis. For example, σ_z
+applied to a spinor returns +1 times spin-up and -1 times spin-down — it
+distinguishes the two states. The physical spin operator along axis a is
+S_a = σ_a/2 (in our units where ℏ = 1), so the measurement outcomes are ±1/2.
 
-Key properties:
-- Each σ has eigenvalues ±1 (so S has eigenvalues ±1/2)
-- σ_z|↑⟩ = +|↑⟩ and σ_z|↓⟩ = −|↓⟩ — our basis states are σ_z eigenstates
-- σ_x flips the spin: σ_x|↑⟩ = |↓⟩ and σ_x|↓⟩ = |↑⟩
-- σ_y also flips spin but with a phase: σ_y|↑⟩ = i|↓⟩
-- They anticommute: σ_x σ_y = iσ_z (and cyclic permutations)
+What each matrix does to a spinor:
+- **σ_z** leaves the spinor unchanged except for sign: σ_z(α, β) = (α, -β).
+  It measures "how much up vs down."
+- **σ_x** swaps the components: σ_x(α, β) = (β, α). It flips spin-up to
+  spin-down and vice versa — the spin analog of a NOT gate.
+- **σ_y** also swaps but with imaginary phases: σ_y(α, β) = (-iβ, iα). It
+  combines a flip with a 90° rotation in the complex plane.
+
+The notation σ_z|↑⟩ = +|↑⟩ means: applying the σ_z matrix to the spin-up
+vector (1, 0) gives back (1, 0) with a factor of +1. Similarly,
+σ_z|↓⟩ = −|↓⟩ means applying σ_z to (0, 1) gives (0, -1) = -1 × (0, 1).
+In linear algebra terms, |↑⟩ and |↓⟩ are the eigenvectors of σ_z with
+eigenvalues +1 and -1.
 
 ### Spin expectation values
 
-For a spinor (α, β):
+For a spinor (α, β), the average spin measurement along each axis is:
 
 ```
+⟨σ_z⟩ = |α|² - |β|²    — spin component in the z direction
 ⟨σ_x⟩ = 2 Re(α* β)     — spin component in the x direction
 ⟨σ_y⟩ = 2 Im(α* β)     — spin component in the y direction
-⟨σ_z⟩ = |α|² - |β|²    — spin component in the z direction
 ```
 
-These three numbers define the **Bloch vector** — a point on the unit sphere
-that represents the spin state geometrically. Pure states live on the surface
-of the Bloch sphere; mixed states are inside it.
+Here α\* means the complex conjugate of α (flip the sign of the imaginary
+part), and Re/Im extract the real/imaginary parts.
+
+**⟨σ_z⟩** is the simplest: if the particle is all spin-up (α=1, β=0), then
+⟨σ_z⟩ = 1. All spin-down: ⟨σ_z⟩ = -1. Equal superposition: ⟨σ_z⟩ = 0.
+
+**⟨σ_x⟩ and ⟨σ_y⟩** depend on the relative phase between α and β. Two states
+with the same |α| and |β| can have different x and y components depending on
+whether α and β are in phase, out of phase, or 90° apart.
+
+These three numbers (⟨σ_x⟩, ⟨σ_y⟩, ⟨σ_z⟩) form the **Bloch vector** — a
+point on or inside a unit sphere that represents the spin state geometrically.
+When the particle is in a definite spin state (a pure state), the Bloch vector
+has length 1 and sits on the sphere's surface. When spin is entangled with
+position (as in the Stern-Gerlach effect), the vector shrinks toward the
+center — the spin is no longer in a definite state on its own.
 
 ## Magnetic Fields and the Zeeman Effect
 
-A magnetic field couples to spin. The interaction Hamiltonian is:
+A magnetic field interacts with spin because spin produces a tiny magnetic
+moment (like a compass needle). The energy of a compass needle depends on its
+orientation relative to the field — aligned is low energy, anti-aligned is high.
 
-```
-H_mag = -μ · B = (g_s μ_B / ℏ) S · B
-```
-
-In atomic units with g_s ≈ 2 and the Bohr magneton μ_B = 1/2, this simplifies.
-For a field along z:
+The full formula involves physical constants (the g-factor, the Bohr magneton),
+but in our atomic units it simplifies to a clean result. For a magnetic field
+pointing along the z axis:
 
 ```
 H_mag = B_z σ_z / 2
 ```
 
-This adds +B_z/2 to the energy of spin-up and −B_z/2 to spin-down. An energy
-level that was degenerate (same energy for both spins) **splits** into two levels
-separated by B_z. This is the **Zeeman effect** — first observed in 1896 and
-one of the early clues that spin exists.
+What this means concretely: σ_z gives +1 for spin-up and -1 for spin-down,
+so this term adds **+B_z/2 to the energy of spin-up** and **-B_z/2 to
+spin-down**. An energy level that was the same for both spins now **splits**
+into two levels separated by B_z. This is the **Zeeman effect** — first
+observed in 1896 and one of the early clues that spin exists.
 
-In the simulation: a longitudinal field (B_z) doesn't mix the spin components.
+In the simulation, a longitudinal field (B_z) doesn't mix the spin components.
 It just adds a different potential to each:
 
 ```
-V_↑(x) = V(x) + B_z/2
-V_↓(x) = V(x) - B_z/2
+V_↑(x) = V(x) + B_z/2       spin-up sees a slightly higher potential
+V_↓(x) = V(x) - B_z/2       spin-down sees a slightly lower potential
 ```
 
-Each spin component evolves independently under its own effective potential.
+Each spin component evolves independently under its own effective potential,
+like two separate particles in slightly different wells.
 
 ## Larmor Precession
 
 A transverse magnetic field (along x or y) does something more interesting:
-it **mixes the spin components**. A spin-up particle in a B_x field will
-oscillate between up and down at the **Larmor frequency** ω_L = B_x.
+it **mixes the spin components**. While a z-field just shifts energies, an
+x-field actively flips spin-up into spin-down and vice versa. A spin-up
+particle in a B_x field will oscillate between up and down at the **Larmor
+frequency** ω_L = B_x.
 
-The time evolution under H = B_x σ_x / 2 rotates the spinor:
+The time evolution is a rotation — the B_x field literally rotates the spin
+state over time:
 
 ```
-(α(t))   ( cos(B_x t/2)    -i sin(B_x t/2) ) (α(0))
-(β(t)) = ( -i sin(B_x t/2)  cos(B_x t/2)   ) (β(0))
+α(t) =  cos(B_x t/2) · α(0)  -  i·sin(B_x t/2) · β(0)
+β(t) = -i·sin(B_x t/2) · α(0)  +  cos(B_x t/2) · β(0)
 ```
 
-Starting from pure spin-up (α=1, β=0):
+This is a 2×2 matrix multiplying the spinor at each moment. The cos and sin
+control how much of the original up-component stays up vs rotates into down
+(and vice versa). The factor of i (the imaginary unit) is needed to keep the
+rotation unitary (probability-preserving).
+
+Starting from pure spin-up (α=1, β=0), the z-component of spin oscillates:
 - At t=0: ⟨σ_z⟩ = 1 (fully up)
-- At t=π/(2B_x): ⟨σ_z⟩ = 0 (equal superposition)
+- At t=π/(2B_x): ⟨σ_z⟩ = 0 (equal superposition of up and down)
 - At t=π/B_x: ⟨σ_z⟩ = −1 (fully down)
-- At t=2π/B_x: ⟨σ_z⟩ = 1 (back to up)
+- At t=2π/B_x: ⟨σ_z⟩ = 1 (back to up — full cycle)
 
 This is **Larmor precession** — the spin precesses around the field direction,
-exactly analogous to a gyroscope precessing in gravity, but quantized.
+analogous to a gyroscope precessing in gravity, but quantized. The precession
+period T = 2π/B_x, so stronger fields make it spin faster.
 
-In the simulation: a transverse field requires a spin rotation step that mixes
-ψ_↑ and ψ_↓ at each grid point. This is a 2×2 unitary matrix applied pointwise.
+In the simulation: the transverse field requires a rotation step that mixes
+ψ_↑ and ψ_↓ at each grid point. This is the 2×2 matrix above, applied to the
+pair (ψ_↑(x), ψ_↓(x)) at every position x.
 
-## The Hamiltonian with Spin
+## The Full Picture: Spatial Motion + Spin
 
-For a single particle with spin in a potential V(x) and magnetic field B:
+A particle with spin has three things happening simultaneously:
+1. **Spatial kinetic energy** — the usual -½ ∂²/∂x² from Chapter 1, which
+   affects both spin components identically (momentum doesn't care about spin)
+2. **Potential energy** V(x) — also the same for both components (for an
+   electrostatic potential; magnetic fields make it spin-dependent)
+3. **Magnetic coupling** — B_z splits the energies, B_x rotates the spin
+
+Written as a formula:
 
 ```
-H = (-½ ∂²/∂x² + V(x)) ⊗ I₂ + B_z σ_z/2 + B_x σ_x/2
+H = [-½ ∂²/∂x² + V(x)] · I  +  B_z σ_z/2  +  B_x σ_x/2
+     └── same for both ──┘      └── splits ──┘  └ rotates ┘
 ```
 
-The first term is the spatial Hamiltonian acting identically on both spin
-components. The second and third terms are the magnetic coupling, which acts
-on the spin at each spatial point.
+Here I is the 2×2 identity matrix — it means "do the same thing to both
+components." The ⊗ (tensor product) symbol you'll see in textbooks is just a
+formal way of saying "this spatial operator acts on both spin components
+independently."
 
-The split-operator method extends naturally:
-1. Apply V half-step (potentially spin-dependent if B_z ≠ 0)
-2. Apply spin rotation half-step (if B_x ≠ 0)
-3. FFT both components
-4. Apply T full step (same for both — momentum doesn't depend on spin)
-5. IFFT both components
+The split-operator method extends naturally. Each time step:
+1. Apply V half-step (spin-dependent if B_z ≠ 0: different phase for ↑ and ↓)
+2. Apply spin rotation half-step (if B_x ≠ 0: mix ↑ and ↓)
+3. FFT both components to momentum space
+4. Apply kinetic full step (same for both — momentum doesn't depend on spin)
+5. IFFT both components back to position space
 6. Apply spin rotation half-step
 7. Apply V half-step
 
-The kinetic energy doesn't distinguish spin states. Only the potential and
-magnetic terms do.
+The cost is roughly 2× Chapter 1: two FFTs instead of one, plus some
+pointwise 2×2 operations.
 
 ## Two Particles with Spin: Singlet and Triplet
 
 This is where spin connects back to Chapter 3 and explains something deep.
 
-Two spin-1/2 particles have a 4D spin space: |↑↑⟩, |↑↓⟩, |↓↑⟩, |↓↓⟩. These
-combine into states of definite total spin:
-
-### Spin triplet (S=1, symmetric spin)
-
-```
-|↑↑⟩                              m_s = +1
-(|↑↓⟩ + |↓↑⟩)/√2                  m_s =  0
-|↓↓⟩                              m_s = -1
-```
-
-Three states, all symmetric under particle exchange.
-
-### Spin singlet (S=0, antisymmetric spin)
+Two spin-1/2 particles each have a spin that can be up or down, giving four
+possible combinations: both up, first up + second down, first down + second
+up, and both down. Written in the |particle₁ particle₂⟩ notation:
 
 ```
-(|↑↓⟩ - |↓↑⟩)/√2                  m_s =  0
+|↑↑⟩    |↑↓⟩    |↓↑⟩    |↓↓⟩
 ```
 
-One state, antisymmetric under particle exchange.
+These four basis states combine into groups based on what happens when you
+swap the two particles' labels:
+
+### Spin triplet (total spin S=1, symmetric)
+
+Three combinations that **stay the same** when you swap particles 1 and 2:
+
+```
+|↑↑⟩                         both up (obviously symmetric)
+(|↑↓⟩ + |↓↑⟩)/√2             one up one down, symmetric combination
+|↓↓⟩                         both down (obviously symmetric)
+```
+
+The middle state is symmetric because swapping ↑↓ and ↓↑ gives back the
+same sum. The 1/√2 keeps the total probability equal to 1.
+
+### Spin singlet (total spin S=0, antisymmetric)
+
+One combination that **picks up a minus sign** when you swap:
+
+```
+(|↑↓⟩ - |↓↑⟩)/√2             one up one down, antisymmetric combination
+```
+
+Swapping gives (|↓↑⟩ - |↑↓⟩)/√2 = minus the original. This is the only
+antisymmetric possibility.
 
 ### The connection to spatial symmetry
 
-For fermions, the **total** wavefunction (space × spin) must be antisymmetric.
-Since antisymmetric = symmetric × antisymmetric, this means:
+Here's the key insight from Chapter 3: fermions require their **total**
+wavefunction to be antisymmetric under exchange. The total wavefunction is
+the spatial part times the spin part. For the product to be antisymmetric,
+one factor must be symmetric and the other antisymmetric:
 
-- **Singlet** (antisymmetric spin) → **symmetric spatial** wavefunction
-- **Triplet** (symmetric spin) → **antisymmetric spatial** wavefunction
+- **Singlet** (antisymmetric spin) → spatial part must be **symmetric**
+- **Triplet** (symmetric spin) → spatial part must be **antisymmetric**
 
-This is the stunning revelation: **Chapter 3's "boson" mode was actually two
-fermions in a spin singlet, and "fermion" mode was two fermions in a spin
-triplet.** The spatial symmetry we imposed wasn't arbitrary — it was the
-consequence of the spin state.
+This retroactively explains Chapter 3: **the "boson" mode (symmetric spatial
+wavefunction) was really two fermions in a spin singlet, and the "fermion"
+mode (antisymmetric spatial wavefunction) was two fermions in a spin triplet.**
+The spatial symmetry we imposed wasn't arbitrary — it was forced by the spin.
 
 Two electrons *can* share a spatial orbital — if their spins are opposite
 (singlet). This is why each atomic orbital holds exactly two electrons:
@@ -222,16 +282,16 @@ That's the Pauli exclusion principle in its full spin-aware form.
 ## Exchange Energy
 
 Because singlet and triplet have different spatial symmetries, they have
-different energies when there's an interaction:
+different energies when there's an interaction potential between the particles.
 
-```
-E_singlet = ⟨ψ_sym | H | ψ_sym⟩       (particles can overlap → higher V_int)
-E_triplet = ⟨ψ_anti | H | ψ_anti⟩     (particles avoid each other → lower V_int)
-```
+The symmetric spatial state (singlet spin) allows both particles to be at the
+same position — so for a repulsive interaction, the particles feel more
+repulsion. The antisymmetric spatial state (triplet spin) has a node where
+the particles overlap — they naturally stay apart, feeling less repulsion.
 
-The difference E_singlet − E_triplet is the **exchange energy** J. For repulsive
-interactions (like Coulomb), J > 0: the triplet state has lower energy because
-the particles stay apart, reducing their repulsion.
+The energy difference between singlet and triplet is the **exchange energy** J.
+For repulsive interactions (like Coulomb), J > 0: the triplet has lower energy
+because the particles avoid each other.
 
 This energy difference is the origin of:
 

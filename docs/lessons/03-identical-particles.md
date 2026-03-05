@@ -38,9 +38,9 @@ This allows exactly two possibilities:
 ψ(x₂, x₁) = -ψ(x₁, x₂)     (antisymmetric — fermions)
 ```
 
-No other option works. If ψ picked up a phase e^{iθ} under exchange, applying
-the swap twice (which must be the identity) would require e^{2iθ} = 1, so
-θ = 0 or π. That's the + and − signs.
+No other option works. Swapping could multiply ψ by some complex factor, but
+since swapping twice must return to the original (swapping 1↔2 then 1↔2 again
+is a no-op), that factor squared must equal 1. The only solutions are +1 and -1.
 
 This is not a preference or approximation. It's a **superselection rule**: a
 particle is either always a boson or always a fermion. There are no particles

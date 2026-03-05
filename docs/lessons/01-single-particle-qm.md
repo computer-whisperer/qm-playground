@@ -27,23 +27,29 @@ two paths interfere.
 
 ## The Schrödinger Equation
 
-The time evolution of ψ is governed by:
+The time evolution of ψ is governed by the Schrödinger equation:
 
 ```
 iℏ ∂ψ/∂t = Ĥψ
 ```
 
-where Ĥ is the **Hamiltonian operator** (total energy). For a single particle in a potential V(x):
+The left side is i (the imaginary unit) times ℏ times the rate of change of ψ.
+The right side is the **Hamiltonian operator** Ĥ applied to ψ. The Hamiltonian
+encodes the total energy of the system — it determines how the wavefunction
+evolves. The hat (^) is just notation to remind you it's an operator (something
+that acts on functions), not a number.
+
+For a single particle in a potential V(x), the Hamiltonian has two parts:
 
 ```
 iℏ ∂ψ/∂t = -ℏ²/(2m) ∂²ψ/∂x² + V(x)ψ
 ```
 
 Breaking this down:
-- Left side: i times the time derivative (how ψ changes)
-- Right side, first term: **kinetic energy** (the second spatial derivative measures curvature —
-  more curved = higher momentum = more kinetic energy)
-- Right side, second term: **potential energy** (multiplied directly)
+- Left side: how ψ changes over time
+- Right side, first term: **kinetic energy** — the second spatial derivative measures
+  curvature. A highly curved wavefunction has high momentum and thus high kinetic energy.
+- Right side, second term: **potential energy** — just V(x) multiplied by ψ at each point
 
 In **atomic units** (ℏ = m = 1), this simplifies to:
 
@@ -102,24 +108,43 @@ This isn't a measurement limitation — it's a fundamental property of waves.
 Our code solves the Schrödinger equation using the **split-operator** (split-step Fourier)
 method. Here's the idea:
 
-The time evolution operator is:
+The Schrödinger equation says how ψ evolves in time. Over a short time step
+dt, the new wavefunction is related to the old by a "time evolution operator":
+
 ```
 ψ(t + dt) = e^{-iĤ dt} ψ(t)
 ```
 
-The Hamiltonian Ĥ = T̂ + V̂ (kinetic + potential). These don't commute in general,
-but for small dt we can approximate:
+The e^{...} here is a matrix exponential (or operator exponential) — a
+generalization of the ordinary exponential function to operators. The hat on Ĥ
+just marks it as an operator (something that acts on wavefunctions, not a
+plain number). The key fact: e^{-iĤ dt} is **unitary**, which means it
+preserves total probability. No probability leaks or appears — the particle
+stays normalized.
+
+The Hamiltonian splits into kinetic and potential parts: Ĥ = T̂ + V̂. These
+don't commute (applying T then V gives a different result than V then T), but
+for small dt we can approximate by alternating:
 
 ```
-e^{-i(T̂+V̂)dt} ≈ e^{-iV̂ dt/2} · e^{-iT̂ dt} · e^{-iV̂ dt/2} + O(dt³)
+e^{-i(T̂+V̂)dt} ≈ e^{-iV̂ dt/2} · e^{-iT̂ dt} · e^{-iV̂ dt/2}
 ```
+
+This is called **Strang splitting** and is accurate to order dt² (the error
+per step is proportional to dt³).
 
 The key trick:
-- **V̂ is diagonal in position space**: e^{-iV dt/2} just multiplies each grid point
-- **T̂ is diagonal in momentum space**: e^{-iT dt} just multiplies each Fourier coefficient
+- **V̂ is diagonal in position space**: e^{-iV dt/2} just multiplies each grid
+  point by a complex phase factor e^{-iV(x)dt/2}. This is just one multiply
+  per grid point.
+- **T̂ is diagonal in momentum space**: e^{-iT dt} just multiplies each Fourier
+  coefficient by e^{-ik²dt/2}. Also one multiply per grid point, but in
+  Fourier space.
 - So we: apply V half-step → FFT → apply T full step → inverse FFT → apply V half-step
 
-This is **exact to second order in dt** and preserves unitarity (total probability stays 1).
+Each half is simple pointwise multiplication. The FFT and inverse FFT (O(N log N))
+are the expensive parts. The result preserves unitarity — total probability
+stays exactly 1.
 
 ### Why FFT?
 

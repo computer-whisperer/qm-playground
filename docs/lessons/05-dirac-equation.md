@@ -18,38 +18,50 @@ The relativistic energy-momentum relation is:
 E² = p²c² + m²c⁴
 ```
 
-The obvious approach: replace E → iℏ∂/∂t and p → -iℏ∂/∂x to get the
-**Klein-Gordon equation**:
+The obvious approach: in quantum mechanics, energy corresponds to the time
+derivative (E → iℏ∂/∂t) and momentum to the spatial derivative (p → -iℏ∂/∂x).
+Substituting into E² = p²c² + m²c⁴ gives the **Klein-Gordon equation**:
 
 ```
 -ℏ² ∂²ψ/∂t² = -ℏ²c² ∂²ψ/∂x² + m²c⁴ ψ
 ```
 
-This is second-order in time (unlike Schrödinger, which is first-order). The
-problem: |ψ|² is no longer a conserved probability density. It can go negative.
-The Klein-Gordon equation describes relativistic *scalar* particles (spin-0),
-but it's really a field equation, not a probability-amplitude equation.
+This is second-order in time — you need both ψ and ∂ψ/∂t to specify the
+initial state, unlike Schrödinger which only needs ψ. The deeper problem:
+|ψ|² is no longer a conserved probability density (it can go negative!). The
+Klein-Gordon equation turns out to describe relativistic *scalar* particles
+(spin-0), but it's really a field equation, not a single-particle wave
+equation.
 
 Dirac's insight: take the **square root** of the energy-momentum relation.
 Write E as a *linear* function of p, at the cost of making the coefficients
-matrices:
+matrices instead of numbers:
 
 ```
 E = c α p + β mc²
 ```
 
-where α and β are matrices satisfying α² = β² = I and αβ + βα = 0. In 1D,
-these can be 2×2 matrices — the Pauli matrices work: α = σ_x, β = σ_z.
+where α and β are matrices. For this to reproduce E² = p²c² + m²c⁴ when
+you square both sides, the matrices must satisfy α² = β² = I (each squares
+to the identity) and αβ + βα = 0 (they anticommute — the order matters).
+Ordinary numbers can't satisfy anticommutation, but 2×2 matrices can.
+The Pauli matrices from Chapter 4 work: α = σ_x, β = σ_z.
 
-The resulting equation is first-order in both time and space:
+Since the coefficients are 2×2 matrices, the wavefunction must be a
+2-component vector (a spinor) for the multiplication to make sense. The
+resulting equation is first-order in both time and space:
 
 ```
 iℏ ∂ψ/∂t = (-iℏc σ_x ∂/∂x + mc² σ_z) ψ
 ```
 
-where ψ is now a 2-component spinor — not by assumption, but as a consequence
-of the mathematics. **Spin emerges from requiring a first-order relativistic
-wave equation.**
+Here σ_x ∂/∂x means: take the spatial derivative of each spinor component,
+then apply the σ_x matrix (which swaps the components). And mc² σ_z means:
+multiply the upper component by +mc² and the lower by -mc².
+
+The spinor structure — two components, corresponding to particle and
+antiparticle — is not put in by hand. It's forced by the mathematics.
+**Spin emerges from requiring a first-order relativistic wave equation.**
 
 ## The 1D Dirac Hamiltonian
 
@@ -57,14 +69,22 @@ In our units (ℏ = 1, but keeping c and m explicit):
 
 ```
 H = -ic σ_x ∂/∂x + mc² σ_z + V(x)
+```
 
-  = ( mc² + V(x)      -ic ∂/∂x   )
+Written out as a 2×2 matrix acting on the spinor (ψ_upper, ψ_lower):
+
+```
+H = ( mc² + V(x)      -ic ∂/∂x   )
     ( -ic ∂/∂x      -mc² + V(x)  )
 ```
 
-The two components of the spinor are coupled by the off-diagonal derivative
-terms. The diagonal mc²σ_z term splits the spectrum: one component is
-associated with positive energy (+mc²), the other with negative energy (−mc²).
+Reading this matrix:
+- **Diagonal entries**: mc² + V(x) for the upper component, -mc² + V(x) for
+  the lower. The ±mc² is the rest energy split — the upper component has
+  energy shifted up by mc², the lower shifted down.
+- **Off-diagonal entries**: -ic ∂/∂x couples the two components. The spatial
+  derivative of one component drives the other. This is how momentum mixes
+  particle and antiparticle content.
 
 ### The dispersion relation
 
@@ -101,22 +121,29 @@ The split-operator approach works, but the kinetic step is different.
 
 ### Momentum space
 
-In momentum space, the free Dirac Hamiltonian at each k is a 2×2 matrix:
+After FFT, each momentum mode k has a 2×2 Hamiltonian:
 
 ```
 H_k = ( mc²    ck  )
       ( ck    -mc² )
 ```
 
-The time evolution for one step is exp(-iH_k dt), which is a 2×2 unitary
-rotation:
+The diagonal entries are the rest energy (±mc²) and the off-diagonal entries
+are the momentum coupling (ck). This matrix acts on the pair (ψ_upper(k),
+ψ_lower(k)) at that momentum.
+
+To evolve in time, we need the matrix exponential exp(-iH_k dt). For a 2×2
+matrix, this has a closed-form solution (no numerical matrix exponentiation
+needed):
 
 ```
 exp(-iH_k dt) = cos(E_k dt) I - i sin(E_k dt) (H_k / E_k)
 ```
 
-where E_k = √(c²k² + m²c⁴). This is computed analytically — no matrix
-exponentiation needed.
+where E_k = √(c²k² + m²c⁴) is the relativistic energy at momentum k, and I
+is the 2×2 identity matrix. This is a **rotation** in the 2D spinor space —
+the cos and sin control how much mixing occurs between upper and lower
+components. At each k, we just multiply the spinor pair by this 2×2 matrix.
 
 ### The full step
 

@@ -96,15 +96,22 @@ How entangled is a state? We need a number.
 ### The Reduced Density Matrix
 
 If you have the two-particle state ψ(x₁, x₂) but can only measure particle 1, what do
-you know? You trace out particle 2 to get the **reduced density matrix**:
+you know? You "trace out" (average over) particle 2 to get the **reduced density matrix**:
 
 ```
 ρ₁(x, x') = ∫ ψ(x, x₂) ψ*(x', x₂) dx₂
 ```
 
-This is a matrix (really an integral kernel) that captures everything about particle 1's
-statistics. For a product state, ρ₁ = |φ⟩⟨φ| is a pure state (rank 1). For an entangled
-state, ρ₁ is a *mixed* state — particle 1 isn't in any definite quantum state on its own.
+Here ψ\* is the complex conjugate of ψ. This integral sums over all possible positions
+of particle 2, leaving a function of two copies of particle 1's coordinate (x and x').
+Think of it as a matrix indexed by position — ρ₁(x, x') tells you how coherent particle
+1's wavefunction is between positions x and x'.
+
+For a product state (no entanglement), the reduced density matrix has a simple form:
+ρ₁ describes particle 1 in a definite quantum state — it's "pure." For an entangled
+state, ρ₁ is "mixed" — particle 1 isn't in any single quantum state on its own. It's
+as if particle 1 is in a probabilistic mixture of different states, and you can't tell
+which one without also measuring particle 2.
 
 ### Purity
 
@@ -134,18 +141,21 @@ the heatmap.
 
 ### The Schmidt Decomposition (Optional)
 
-Any bipartite state can be written as:
+Any two-particle state can be decomposed as a sum of product terms:
 
 ```
-ψ(x₁, x₂) = Σᵢ σᵢ uᵢ(x₁) vᵢ(x₂)
+ψ(x₁, x₂) = σ₁ u₁(x₁)v₁(x₂) + σ₂ u₂(x₁)v₂(x₂) + ...
 ```
 
-where σᵢ are the **Schmidt coefficients** (singular values of the wavefunction viewed as a
-matrix), and uᵢ, vᵢ are orthonormal functions. A product state has one nonzero σ.
-Entanglement means multiple nonzero σs.
+where σ₁, σ₂, ... are non-negative weights called **Schmidt coefficients**, and the
+u and v functions are orthogonal (non-overlapping) modes for each particle. A product
+state has exactly one nonzero σ. Entanglement means two or more nonzero σs — the
+state is a genuine mixture of multiple correlated configurations.
 
-This is literally the SVD of the wavefunction matrix. Purity = Σ σᵢ⁴. The Schmidt
-number K = 1/Σσᵢ⁴ counts the effective number of nonzero σs.
+Computationally, this is just the SVD (singular value decomposition) of the wavefunction
+treated as a matrix: ψ[i,j] → U Σ V†. Purity = σ₁⁴ + σ₂⁴ + ..., and the Schmidt
+number K = 1/Purity counts the effective number of terms contributing to the
+entanglement.
 
 ## The Two-Particle Schrödinger Equation
 
